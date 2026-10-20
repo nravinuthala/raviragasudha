@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carnatic Flute Guide & Visualizer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="tailwind-config.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen flex flex-col bg-stone-950 text-stone-100 selection:bg-bamboo-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-stone-900 border-b border-stone-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <button id="sidebar-toggle" type="button" data-action="toggle-sidebar" aria-label="Collapse navigation" aria-expanded="true" aria-controls="app-sidebar" class="w-10 h-10 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-bamboo-500">
+                        <i id="sidebar-toggle-icon" class="fa-solid fa-bars" aria-hidden="true"></i>
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bamboo-gradient flex items-center justify-center text-stone-950 shadow-lg font-bold text-xl">
+                            <i class="fa-solid fa-wand-magic-sparkles text-stone-950"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-amber-500 flex items-center gap-2">
+                                Carnatic Flute Guide
+                                <span class="text-xs font-normal px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/50">8-Hole</span>
+                            </h1>
+                            <p class="text-xs text-stone-400 hidden sm:block">Interactive Swara Fingering Chart & Practice Tutor</p>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="app-layout" class="app-layout flex flex-grow min-h-0">
+        <aside id="app-sidebar" class="app-sidebar bg-stone-900 border-r border-stone-800" aria-label="Main navigation">
+            <nav class="sidebar-nav flex flex-col gap-2 p-3">
+                <button data-action="tab" data-tab="visualizer" id="tab-visualizer" title="Live Visualizer" aria-label="Live Visualizer" aria-current="page" class="nav-tab">
+                    <i class="fa-solid fa-play" aria-hidden="true"></i><span class="nav-label">Live Visualizer</span>
+                </button>
+                <button data-action="tab" data-tab="reference" id="tab-reference" title="Finger Chart" aria-label="Finger Chart" class="nav-tab">
+                    <i class="fa-solid fa-list-ol" aria-hidden="true"></i><span class="nav-label">Finger Chart</span>
+                </button>
+                <button data-action="tab" data-tab="alankars" id="tab-alankars" title="Alankars" aria-label="Alankars" class="nav-tab">
+                    <i class="fa-solid fa-music" aria-hidden="true"></i><span class="nav-label">Alankars</span>
+                </button>
+                <button data-action="tab" data-tab="raagas" id="tab-raagas" title="Raagas" aria-label="Raagas" class="nav-tab">
+                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="nav-label">Raagas</span>
+                </button>
+                <button data-action="tab" data-tab="metronome" id="tab-metronome" title="Metronome" aria-label="Metronome" class="nav-tab">
+                    <i class="fa-solid fa-stopwatch" aria-hidden="true"></i><span class="nav-label">Metronome</span>
+                </button>
+            </nav>
+        </aside>
+        <button id="sidebar-backdrop" type="button" data-action="toggle-sidebar" aria-label="Close navigation" class="sidebar-backdrop"></button>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow min-w-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: LIVE VISUALIZER & PLAYBACK -->
+        <section id="section-visualizer" class="space-y-6">
+            <!-- Flute Interactive Graphic Card -->
+            <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-bullhorn text-bamboo-500"></i> Active Swara Finger Position
+                        </h2>
+                        <p class="text-sm text-stone-400">Interactive 8-hole bamboo flute diagram showing exact hole closure.</p>
+                    </div>
+
+                    <!-- Current Note Badge & Pitch Trigger -->
+                    <div class="flex items-center gap-4 bg-stone-950 px-4 py-2 rounded-xl border border-stone-800">
+                        <div class="text-right">
+                            <span class="text-xs text-stone-400 block uppercase tracking-wider">Current Swara</span>
+                            <span id="current-swara-display" class="text-2xl font-black text-amber-500">S</span>
+                        </div>
+                        <div class="h-8 w-px bg-stone-800"></div>
+                        <div>
+                            <span class="text-xs text-stone-400 block uppercase tracking-wider">Western Pitch</span>
+                            <span id="current-pitch-display" class="text-sm font-semibold text-stone-300">C4 (261.6Hz)</span>
+                        </div>
+                        <button data-action="play-current" class="ml-2 w-10 h-10 rounded-full bg-bamboo-600 hover:bg-bamboo-500 active:scale-95 text-white flex items-center justify-center shadow transition-all" title="Play Sound">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bamboo Flute Visual Container -->
+                <div class="py-8 px-4 bg-stone-950/70 rounded-xl border border-stone-800/80 flex flex-col items-center justify-center overflow-x-auto">
+                    <div class="min-w-[650px] w-full max-w-4xl relative py-6">
+                        <!-- Flute Body -->
+                        <div class="h-16 w-full rounded-full bamboo-wood relative flex items-center justify-between px-8 shadow-2xl border border-amber-900/40">
+                            <!-- Thread Binding Decor -->
+                            <div class="absolute left-6 top-0 bottom-0 w-3 bg-amber-950 border-x border-amber-700/50"></div>
+                            <div class="absolute left-16 top-0 bottom-0 w-2 bg-amber-950 border-x border-amber-700/50"></div>
+                            
+                            <!-- Blow Hole (Embouchure) -->
+                            <div class="w-8 h-8 rounded-full bg-stone-950 border-2 border-stone-700 shadow-inner flex items-center justify-center relative ml-4">
+                                <div class="w-6 h-6 rounded-full bg-black"></div>
+                            </div>
+
+                            <!-- 8 Finger Holes -->
+                            <div class="flex items-center justify-end space-x-4 sm:space-x-6 flex-grow pl-12 pr-4">
+                                <!-- Hole 1 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">1</span>
+                                    <div id="flute-hole-1" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 2 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">2</span>
+                                    <div id="flute-hole-2" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 3 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">3</span>
+                                    <div id="flute-hole-3" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 4 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">4</span>
+                                    <div id="flute-hole-4" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 5 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">5</span>
+                                    <div id="flute-hole-5" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 6 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">6</span>
+                                    <div id="flute-hole-6" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 7 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">7</span>
+                                    <div id="flute-hole-7" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                                <!-- Hole 8 -->
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="text-[10px] text-amber-200/70 font-mono">8</span>
+                                    <div id="flute-hole-8" class="w-8 h-8 rounded-full border-2 border-stone-950 shadow-md transition-all duration-200"></div>
+                                </div>
+                            </div>
+
+                            <!-- Right End Threads -->
+                            <div class="absolute right-6 top-0 bottom-0 w-2 bg-amber-950 border-x border-amber-700/50"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fingering Hole Legend -->
+                    <div class="flex items-center gap-6 mt-4 text-xs text-stone-400">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded-full bg-stone-900 border border-stone-400 inline-block"></span> Fully Closed
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded-full border border-stone-400 inline-block overflow-hidden relative bg-stone-100">
+                                <span class="absolute left-0 top-0 bottom-0 w-1/2 bg-stone-900"></span>
+                            </span> Half Opened
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded-full bg-stone-100 border border-stone-400 inline-block"></span> Fully Opened
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Swara Selector Toolbar -->
+                <div class="mt-6">
+                    <label class="text-xs font-semibold text-stone-400 uppercase tracking-wider block mb-2">Select Swara to Preview Fingering:</label>
+                    <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2" id="quick-swara-buttons">
+                        <!-- JS populated buttons for swaras and octave variants -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Controls & Current Sequence Panel -->
+            <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800 pb-4">
+                    <div>
+                        <span class="text-xs font-bold text-bamboo-500 uppercase tracking-widest">Active Practice Session</span>
+                        <h3 id="player-title" class="text-lg font-bold text-stone-100">Mayamalavagowla - Sarali Varisai 1</h3>
+                        <p id="player-subtitle" class="text-xs text-stone-400">Default Practice Alankar</p>
+                    </div>
+
+                    <!-- Audio Controls Toolbar -->
+                    <div class="flex items-center gap-3">
+                        <button id="btn-play-pause" data-action="toggle-playback" class="px-5 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg transition-all active:scale-95">
+                            <i class="fa-solid fa-play" id="play-icon"></i> <span id="play-text">Play Sequence</span>
+                        </button>
+                        <button data-action="stop-playback" class="p-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 transition-all" title="Reset">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tempo & Audio Controls -->
+                <div class="flex flex-wrap items-center justify-between gap-6 bg-stone-950 p-4 rounded-xl border border-stone-800/60">
+                    <div class="flex items-center gap-3 flex-grow max-w-xs">
+                        <i class="fa-solid fa-gauge-high text-stone-400 text-sm"></i>
+                        <span class="text-xs font-medium text-stone-300 w-16">Tempo: <b id="bpm-val" class="text-amber-400">80</b> BPM</span>
+                        <input type="range" id="bpm-slider" min="30" max="200" value="80" class="w-full accent-bamboo-500 cursor-pointer">
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-repeat text-stone-400 text-sm"></i>
+                        <label class="text-xs font-medium text-stone-300 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="loop-toggle" checked class="rounded border-stone-700 text-bamboo-600 focus:ring-bamboo-500 bg-stone-900"> Loop Continuously
+                        </label>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-music text-stone-400 text-sm"></i>
+                        <span class="text-xs text-stone-400">Scale Base Pitch:</span>
+                        <select id="base-pitch-select" class="bg-stone-900 border border-stone-700 text-amber-400 text-xs rounded-lg px-2.5 py-1.5 focus:ring-amber-500 focus:border-amber-500">
+                            <option value="261.63">C (1 Kattai)</option>
+                            <option value="277.18">C# (1.5 Kattai)</option>
+                            <option value="293.66">D (2 Kattai)</option>
+                            <option value="311.13">D# (2.5 Kattai)</option>
+                            <option value="329.63" selected>E (3 Kattai - Standard Flute)</option>
+                            <option value="349.23">F (4 Kattai)</option>
+                            <option value="392.00">G (5 Kattai)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Sequenced Notes Display with Mini Finger Charts -->
+                <div class="pt-2">
+                    <label class="text-xs text-stone-400 uppercase font-semibold block mb-2">Sequence Notes (Click any note to jump):</label>
+                    <div id="sequence-notes-container" class="flex flex-wrap gap-2 max-h-64 overflow-y-auto p-3 bg-stone-950 rounded-xl border border-stone-800">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: SWARA FINGER CHART REFERENCE -->
+        <section id="section-reference" class="hidden space-y-6">
+            <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-bamboo-500"></i> Swara Fingering Reference
+                    </h2>
+                    <p class="text-sm text-stone-400">Exact fingering positions for standard 8-hole Carnatic flute based on reference chart.</p>
+                </div>
+
+                <!-- Grid of swaras and octave variants -->
+                <div id="swara-reference-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: ALANKARS / EXERCISES (CRUD & SEARCH) -->
+        <section id="section-alankars" class="hidden space-y-6">
+            <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl">
+                <!-- Header & Action Bar -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-graduation-cap text-bamboo-500"></i> Carnatic Flute Exercises & Alankars
+                        </h2>
+                        <p class="text-sm text-stone-400">Practice Sarali, Janta, Dhatu Varisais, and custom alankars.</p>
+                    </div>
+                    <button data-action="add-alankar" class="px-4 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-medium text-sm flex items-center gap-2 shadow transition-all">
+                        <i class="fa-solid fa-plus"></i> Add New Alankar
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                    <div class="relative flex-grow">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-stone-500"></i>
+                        <input type="text" id="alankar-search" placeholder="Search alankars by name, type or swara sequence..." class="w-full bg-stone-950 border border-stone-800 rounded-xl pl-10 pr-4 py-2 text-sm text-stone-100 focus:outline-none focus:border-bamboo-500">
+                    </div>
+                    <select id="alankar-filter-type" class="bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-stone-300 focus:outline-none focus:border-bamboo-500">
+                        <option value="ALL">All Types</option>
+                        <option value="Sarali Varisai">Sarali Varisai</option>
+                        <option value="Janta Varisai">Janta Varisai</option>
+                        <option value="Dhatu Varisai">Dhatu Varisai</option>
+                        <option value="Alankar">Alankar</option>
+                        <option value="Custom">Custom Exercise</option>
+                    </select>
+                </div>
+
+                <!-- Alankars List -->
+                <div id="alankars-list" class="space-y-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: RAAGA LIBRARY (CRUD & SEARCH) -->
+        <section id="section-raagas" class="hidden space-y-6">
+            <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl">
+                <!-- Header & Action Bar -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-om text-bamboo-500"></i> Raaga Library
+                        </h2>
+                        <p class="text-sm text-stone-400">Explore Melakarta & Janya Raagas with Aarohana and Avarohana scales.</p>
+                    </div>
+                    <button data-action="add-raaga" class="px-4 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-medium text-sm flex items-center gap-2 shadow transition-all">
+                        <i class="fa-solid fa-plus"></i> Add New Raaga
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-stone-500"></i>
+                        <input type="text" id="raaga-search" placeholder="Search raagas by name, scale info, or notes..." class="w-full bg-stone-950 border border-stone-800 rounded-xl pl-10 pr-4 py-2 text-sm text-stone-100 focus:outline-none focus:border-bamboo-500">
+                    </div>
+                </div>
+
+                <!-- Raagas Grid -->
+                <div id="raagas-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: METRONOME -->
+        <section id="section-metronome" class="hidden space-y-6">
+            <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl">
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-stopwatch text-bamboo-500"></i> Practice Metronome
+                    </h2>
+                    <p class="text-sm text-stone-400 mt-1">Keep time with precise audio clicks and a clear downbeat accent.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-stone-950 border border-stone-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-72">
+                        <span class="text-xs text-stone-400 uppercase tracking-widest font-semibold">Tempo</span>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <input id="metronome-bpm-input" type="number" min="20" max="300" value="120" aria-label="Metronome tempo in BPM" class="w-36 bg-transparent text-center text-6xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-bamboo-500 rounded-lg">
+                            <span class="text-sm font-semibold text-stone-400">BPM</span>
+                        </div>
+                        <input type="range" id="metronome-bpm-slider" min="20" max="300" value="120" aria-label="Adjust metronome tempo" class="w-full max-w-sm mt-6 accent-bamboo-500 cursor-pointer">
+
+                        <div class="grid grid-cols-4 gap-2 mt-6 w-full max-w-sm">
+                            <button type="button" data-action="metronome-adjust" data-delta="-5" class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-sm transition-colors">−5</button>
+                            <button type="button" data-action="metronome-adjust" data-delta="-1" class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-sm transition-colors">−1</button>
+                            <button type="button" data-action="metronome-adjust" data-delta="1" class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-sm transition-colors">+1</button>
+                            <button type="button" data-action="metronome-adjust" data-delta="5" class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-sm transition-colors">+5</button>
+                            <button type="button" data-action="metronome-adjust" data-factor="2" class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-300 font-semibold text-sm transition-colors">×2</button>
+                            <button type="button" data-action="metronome-adjust" data-factor="0.5" class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-300 font-semibold text-sm transition-colors">÷2</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-stone-950 border border-stone-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                        <label for="metronome-time-signature" class="text-xs text-stone-400 uppercase tracking-widest font-semibold">Time Signature</label>
+                        <select id="metronome-time-signature" class="mt-3 bg-stone-900 border border-stone-700 text-amber-400 text-lg rounded-lg px-4 py-2 focus:ring-amber-500 focus:border-amber-500">
+                            <option value="2">2/4</option>
+                            <option value="3">3/4</option>
+                            <option value="4" selected>4/4</option>
+                            <option value="6">6/8</option>
+                        </select>
+
+                        <div id="metronome-beat-indicators" class="flex items-center justify-center gap-4 mt-10 min-h-14" role="group" aria-label="Beats in measure"></div>
+                        <p id="metronome-beat-status" class="mt-4 text-sm font-medium text-stone-400" aria-live="polite">Metronome stopped</p>
+
+                        <button id="metronome-toggle" type="button" data-action="toggle-metronome" aria-pressed="false" class="mt-6 w-full max-w-xs px-6 py-4 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg transition-all active:scale-95">
+                            <i id="metronome-toggle-icon" class="fa-solid fa-play"></i>
+                            <span id="metronome-toggle-text">Start Metronome</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-stone-900 border-t border-stone-800 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-stone-500">
+            Carnatic Flute Practice Guide &bull; Designed for 8-Hole Flutes &bull; Web Audio Synthesized Feedback
+        </div>
+    </footer>
+
+    <!-- MODAL: ADD / EDIT ALANKAR -->
+    <div id="alankar-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+            <button data-action="close-alankar" class="absolute top-4 right-4 text-stone-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 id="alankar-modal-title" class="text-lg font-bold text-amber-400 mb-4">Add New Alankar</h3>
+            
+            <form id="alankar-form" class="space-y-4">
+                <input type="hidden" id="alankar-id">
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Name / Title</label>
+                    <input type="text" id="alankar-name" required maxlength="120" placeholder="e.g. Mayamalavagowla - Exercise 2" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Exercise Type</label>
+                    <select id="alankar-type" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                        <option value="Sarali Varisai">Sarali Varisai</option>
+                        <option value="Janta Varisai">Janta Varisai</option>
+                        <option value="Dhatu Varisai">Dhatu Varisai</option>
+                        <option value="Alankar">Alankar</option>
+                        <option value="Custom">Custom Exercise</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Description / Notes</label>
+                    <input type="text" id="alankar-desc" maxlength="500" placeholder="e.g. Practicing alternate speed patterns" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Swara Sequence (space separated)</label>
+                    <input type="text" id="alankar-sequence" required maxlength="2048" placeholder="S,2 R1 G3 M1 P D1 N3 S'" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm font-mono text-amber-400 focus:outline-none focus:border-bamboo-500">
+                    <p class="text-[11px] text-stone-500 mt-1">Available swaras: S, R1, R2, G1, G2, G3, M1, M2, P, D1, D2, N1, N2, N3, S'. Add held beats as note,count (e.g. S,2).</p>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" data-action="close-alankar" class="px-4 py-2 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-stone-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-bamboo-600 text-white text-sm font-medium hover:bg-bamboo-500">Save Alankar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT RAAGA -->
+    <div id="raaga-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+            <button data-action="close-raaga" class="absolute top-4 right-4 text-stone-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 id="raaga-modal-title" class="text-lg font-bold text-amber-400 mb-4">Add New Raaga</h3>
+            
+            <form id="raaga-form" class="space-y-4">
+                <input type="hidden" id="raaga-id">
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Raaga Name</label>
+                    <input type="text" id="raaga-name" required maxlength="120" placeholder="e.g. Shankarabharanam" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Scale Info / Melakarta Number</label>
+                    <input type="text" id="raaga-info" maxlength="200" placeholder="e.g. 29th Melakarta Raaga" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Aarohana (Ascending Swaras)</label>
+                    <input type="text" id="raaga-aarohana" required maxlength="2048" placeholder="S,2 R2 G3 M1 P D2 N3 S'" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm font-mono text-amber-400 focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Avarohana (Descending Swaras)</label>
+                    <input type="text" id="raaga-avarohana" required maxlength="2048" placeholder="S',2 N3 D2 P M1 G3 R2 S" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm font-mono text-amber-400 focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-400 font-medium mb-1">Description / Notes</label>
+                    <textarea id="raaga-desc" rows="2" maxlength="500" placeholder="e.g. Major scale equivalent, majestic mood" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" data-action="close-raaga" class="px-4 py-2 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-stone-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-bamboo-600 text-white text-sm font-medium hover:bg-bamboo-500">Save Raaga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
