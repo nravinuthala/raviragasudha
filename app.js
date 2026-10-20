@@ -6,6 +6,11 @@
          * 0 = Fully Opened (Empty circle)
          * Array length = 8 (holes 1 to 8)
          */
+        const SUPABASE_URL = 'https://ogywmetyfckntdszukqv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGciOiJIUzI1NiIsInJlZiI6Im9neXdtZXR5ZmNrbnRkc3p1a3YyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MDUyODUsImV4cCI6MjEwODA4MTI4NX0.L1Dx9UnDl5URHqU5wFryMcNdKbL55o3_VoUJ14RJIOo';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_PLtW5wkQvQyMKjs8hffMMA_EgmF4wYB';
+        const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
+
         const SWARA_DATA = {
             'S': {
                 name: 'Shadjama (S)',
@@ -324,6 +329,101 @@
             } catch (error) {
                 showAppMessage(`Could not save ${label}. Your changes have not been applied. Check browser storage settings and try again.`);
                 console.error(`Unable to save ${label} to localStorage key "${key}".`, error);
+                return false;
+            }
+        }
+
+        function mapSupabaseAlankar(row) {
+            if (!isPlainObject(row) || row.id === null || row.id === undefined) return null;
+            const sequence = typeof row.swara_sequence === 'string'
+                ? normalizeSwaraSequence(row.swara_sequence.trim().split(/\s+/))
+                : null;
+            const item = {
+                id: `sb-alankar-${row.id}`,
+                databaseId: row.id,
+                name: row.name,
+                type: row.exercise_type,
+                description: row.description || '',
+                sequence
+            };
+            return isValidId(item.id) &&
+                isValidText(item.name, 120, true) &&
+                isValidText(item.type, 120, true) &&
+                isValidText(item.description, 500) &&
+                sequence
+                ? item
+                : null;
+        }
+
+        function mapSupabaseRaaga(row) {
+            if (!isPlainObject(row) || row.id === null || row.id === undefined) return null;
+            const aarohana = typeof row.arohana === 'string'
+                ? normalizeSwaraSequence(row.arohana.trim().split(/\s+/))
+                : null;
+            const avarohana = typeof row.avarohana === 'string'
+                ? normalizeSwaraSequence(row.avarohana.trim().split(/\s+/))
+                : null;
+            const item = {
+                id: `sb-raaga-${row.id}`,
+                databaseId: row.id,
+                name: row.name,
+                info: row.scale_info || '',
+                aarohana,
+                avarohana,
+                description: row.description || ''
+            };
+            return isValidId(item.id) &&
+                isValidText(item.name, 120, true) &&
+                isValidText(item.info, 200) &&
+                isValidText(item.description, 500) &&
+                aarohana &&
+                avarohana
+                ? item
+                : null;
+        }
+
+        function mergeSupabaseItems(localItems, remoteItems) {
+            const merged = new Map(
+                localItems
+                    .filter(item => item.databaseId === undefined)
+                    .map(item => [item.id, item])
+            );
+            remoteItems.forEach(item => merged.set(item.id, item));
+            return [...merged.values()];
+        }
+
+        async function fetchDataFromSupabase() {
+            if (!supabaseClient) {
+                showAppMessage('Supabase could not be initialized. Check that the Supabase library loaded correctly.');
+                console.error('Supabase is unavailable; using locally saved collections.');
+                return false;
+            }
+
+            try {
+                const [raagasResult, alankarsResult] = await Promise.all([
+                    supabaseClient.from('carnatic_ragas').select('id,name,scale_info,arohana,avarohana,description'),
+                    supabaseClient.from('carnatic_alankars').select('id,name,exercise_type,description,swara_sequence')
+                ]);
+                if (raagasResult.error) throw raagasResult.error;
+                if (alankarsResult.error) throw alankarsResult.error;
+
+                const remoteRaagas = raagasResult.data.map(mapSupabaseRaaga).filter(Boolean);
+                const remoteAlankars = alankarsResult.data.map(mapSupabaseAlankar).filter(Boolean);
+                if (remoteRaagas.length !== raagasResult.data.length ||
+                    remoteAlankars.length !== alankarsResult.data.length) {
+                    console.warn('Some Supabase records were skipped because their fields or swara sequences were invalid.');
+                }
+
+                raagas = mergeSupabaseItems(raagas, remoteRaagas);
+                alankars = mergeSupabaseItems(alankars, remoteAlankars);
+                persistCollection('carnatic_raagas', raagas, 'raaga');
+                persistCollection('carnatic_alankars', alankars, 'exercise');
+                renderRaagas();
+                renderAlankars();
+                return true;
+            } catch (error) {
+                console.error('Unable to load raagas and alankars from Supabase.', error);
+                showAppMessage('Could not load raagas and alankars from Supabase. Locally saved items are still available.');
                 return false;
             }
         }
@@ -743,6 +843,7 @@
             renderMetronomeBeatIndicators();
             loadSequence(DEFAULT_ALANKARS[0].name, 'Default Practice', DEFAULT_ALANKARS[0].sequence);
             updateFluteDisplay('S');
+            fetchDataFromSupabase();
         }
 
         document.addEventListener('DOMContentLoaded', initializeApp, { once: true });
@@ -1143,7 +1244,7 @@
             document.getElementById('alankar-modal').classList.add('hidden');
         }
 
-        function saveAlankar(e) {
+        async function saveAlankar(e) {
             e.preventDefault();
             const id = document.getElementById('alankar-id').value;
             const name = document.getElementById('alankar-name').value.trim();
@@ -1156,28 +1257,79 @@
                 return;
             }
 
-            const item = { id: id || `ala_${Date.now()}`, name, type, description, sequence };
+            let item = { id: id || `ala_${Date.now()}`, name, type, description, sequence };
             const index = alankars.findIndex(alankar => alankar.id === id);
-            const nextAlankars = [...alankars];
             if (id && index < 0) {
                 showAppMessage('That exercise no longer exists. Refresh the exercise list and try again.');
                 return;
             }
+
+            try {
+                const payload = {
+                    name,
+                    exercise_type: type,
+                    description,
+                    swara_sequence: formatSwaraSequence(sequence)
+                };
+                if (index >= 0 && alankars[index].databaseId) {
+                    const { data, error } = await supabaseClient
+                        .from('carnatic_alankars')
+                        .update(payload)
+                        .eq('id', alankars[index].databaseId)
+                        .select('*')
+                        .single();
+                    if (error) throw error;
+                    item = mapSupabaseAlankar(data);
+                } else if (index < 0) {
+                    if (!supabaseClient) throw new Error('Supabase is unavailable.');
+                    const { data, error } = await supabaseClient
+                        .from('carnatic_alankars')
+                        .insert([payload])
+                        .select('*')
+                        .single();
+                    if (error) throw error;
+                    item = mapSupabaseAlankar(data);
+                }
+                if (!item) throw new Error('Supabase returned an invalid alankar record.');
+            } catch (error) {
+                console.error('Unable to save alankar to Supabase.', error);
+                showAppMessage(`Could not save alankar to Supabase: ${error.message || 'Please try again.'}`);
+                return;
+            }
+
+            const nextAlankars = [...alankars];
             if (index >= 0) nextAlankars[index] = item;
             else nextAlankars.push(item);
-            if (!persistCollection('carnatic_alankars', nextAlankars, 'exercise')) return;
             alankars = nextAlankars;
+            persistCollection('carnatic_alankars', nextAlankars, 'exercise');
             closeAlankarModal();
             renderAlankars();
         }
 
-        function deleteAlankar(id) {
+        async function deleteAlankar(id) {
             if (confirm("Are you sure you want to delete this exercise?")) {
-                const nextAlankars = alankars.filter(a => a.id !== id);
-                if (nextAlankars.length === alankars.length) return;
-                if (!persistCollection('carnatic_alankars', nextAlankars, 'exercise')) return;
-                alankars = nextAlankars;
-                renderAlankars();
+                const item = alankars.find(alankar => alankar.id === id);
+                if (!item) return;
+                try {
+                    if (item.databaseId) {
+                        if (!supabaseClient) throw new Error('Supabase is unavailable.');
+                        const { data, error } = await supabaseClient
+                            .from('carnatic_alankars')
+                            .delete()
+                            .eq('id', item.databaseId)
+                            .select('id')
+                            .maybeSingle();
+                        if (error) throw error;
+                        if (!data) throw new Error('The alankar was not found in Supabase.');
+                    }
+                    const nextAlankars = alankars.filter(alankar => alankar.id !== id);
+                    alankars = nextAlankars;
+                    persistCollection('carnatic_alankars', nextAlankars, 'exercise');
+                    renderAlankars();
+                } catch (error) {
+                    console.error('Unable to delete alankar from Supabase.', error);
+                    showAppMessage(`Could not delete alankar: ${error.message || 'Please try again.'}`);
+                }
             }
         }
 
@@ -1269,7 +1421,7 @@
             document.getElementById('raaga-modal').classList.add('hidden');
         }
 
-        function saveRaaga(e) {
+        async function saveRaaga(e) {
             e.preventDefault();
             const id = document.getElementById('raaga-id').value;
             const name = document.getElementById('raaga-name').value.trim();
@@ -1283,27 +1435,79 @@
                 return;
             }
 
-            const item = { id: id || `raa_${Date.now()}`, name, info, aarohana, avarohana, description };
+            let item = { id: id || `raa_${Date.now()}`, name, info, aarohana, avarohana, description };
             const index = raagas.findIndex(raaga => raaga.id === id);
-            const nextRaagas = [...raagas];
             if (id && index < 0) {
                 showAppMessage('That raaga no longer exists. Refresh the raaga list and try again.');
                 return;
             }
+
+            try {
+                const payload = {
+                    name,
+                    scale_info: info,
+                    arohana: formatSwaraSequence(aarohana),
+                    avarohana: formatSwaraSequence(avarohana),
+                    description
+                };
+                if (index >= 0 && raagas[index].databaseId) {
+                    const { data, error } = await supabaseClient
+                        .from('carnatic_ragas')
+                        .update(payload)
+                        .eq('id', raagas[index].databaseId)
+                        .select('*')
+                        .single();
+                    if (error) throw error;
+                    item = mapSupabaseRaaga(data);
+                } else if (index < 0) {
+                    if (!supabaseClient) throw new Error('Supabase is unavailable.');
+                    const { data, error } = await supabaseClient
+                        .from('carnatic_ragas')
+                        .insert([payload])
+                        .select('*')
+                        .single();
+                    if (error) throw error;
+                    item = mapSupabaseRaaga(data);
+                }
+                if (!item) throw new Error('Supabase returned an invalid raaga record.');
+            } catch (error) {
+                console.error('Unable to save raaga to Supabase.', error);
+                showAppMessage(`Could not save raaga to Supabase: ${error.message || 'Please try again.'}`);
+                return;
+            }
+
+            const nextRaagas = [...raagas];
             if (index >= 0) nextRaagas[index] = item;
             else nextRaagas.push(item);
-            if (!persistCollection('carnatic_raagas', nextRaagas, 'raaga')) return;
             raagas = nextRaagas;
+            persistCollection('carnatic_raagas', nextRaagas, 'raaga');
             closeRaagaModal();
             renderRaagas();
         }
 
-        function deleteRaaga(id) {
+        async function deleteRaaga(id) {
             if (confirm("Are you sure you want to delete this raaga?")) {
-                const nextRaagas = raagas.filter(r => r.id !== id);
-                if (nextRaagas.length === raagas.length) return;
-                if (!persistCollection('carnatic_raagas', nextRaagas, 'raaga')) return;
-                raagas = nextRaagas;
-                renderRaagas();
+                const item = raagas.find(raaga => raaga.id === id);
+                if (!item) return;
+                try {
+                    if (item.databaseId) {
+                        if (!supabaseClient) throw new Error('Supabase is unavailable.');
+                        const { data, error } = await supabaseClient
+                            .from('carnatic_ragas')
+                            .delete()
+                            .eq('id', item.databaseId)
+                            .select('id')
+                            .maybeSingle();
+                        if (error) throw error;
+                        if (!data) throw new Error('The raaga was not found in Supabase.');
+                    }
+                    const nextRaagas = raagas.filter(raaga => raaga.id !== id);
+                    raagas = nextRaagas;
+                    persistCollection('carnatic_raagas', nextRaagas, 'raaga');
+                    renderRaagas();
+                } catch (error) {
+                    console.error('Unable to delete raaga from Supabase.', error);
+                    showAppMessage(`Could not delete raaga: ${error.message || 'Please try again.'}`);
+                }
             }
         }
