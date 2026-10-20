@@ -397,6 +397,13 @@
             }
         }
 
+        function adjustPracticeTempo({ delta, factor }) {
+            const nextBpm = factor !== undefined
+                ? (Number(factor) === 0.5 ? Math.floor(bpm / 2) : Math.round(bpm * Number(factor)))
+                : bpm + Number(delta);
+            updateBPM(Math.max(20, Math.min(300, nextBpm)));
+        }
+
         function renderMetronomeBeatIndicators() {
             const container = document.getElementById('metronome-beat-indicators');
             if (!container) return;
@@ -621,6 +628,9 @@
                 case 'metronome-adjust':
                     adjustMetronomeTempo(button.dataset);
                     break;
+                case 'adjust-practice-tempo':
+                    adjustPracticeTempo(button.dataset);
+                    break;
                 case 'stop-playback':
                     stopPlayback();
                     break;
@@ -693,6 +703,12 @@
             document.addEventListener('click', handleActionClick);
             document.addEventListener('input', event => {
                 if (event.target.id === 'bpm-slider') updateBPM(event.target.value);
+                if (event.target.id === 'bpm-input') {
+                    const sanitized = event.target.value.replace(/\D/g, '').slice(0, 3);
+                    if (event.target.value !== sanitized) event.target.value = sanitized;
+                    const enteredBpm = Number(sanitized);
+                    if (sanitized && enteredBpm >= 20 && enteredBpm <= 300) updateBPM(enteredBpm);
+                }
                 if (event.target.id === 'metronome-bpm-slider') {
                     setMetronomeTempo(event.target.value);
                 }
@@ -705,6 +721,12 @@
             document.addEventListener('change', event => {
                 if (event.target.id === 'base-pitch-select') changeBasePitch(event.target.value);
                 if (event.target.id === 'alankar-filter-type') renderAlankars();
+                if (event.target.id === 'bpm-input') {
+                    const enteredBpm = Number(event.target.value);
+                    updateBPM(event.target.value && Number.isFinite(enteredBpm)
+                        ? Math.max(20, Math.min(300, Math.round(enteredBpm)))
+                        : bpm);
+                }
                 if (event.target.id === 'metronome-bpm-input') setMetronomeTempo(event.target.value);
                 if (event.target.id === 'metronome-time-signature') {
                     metronomeBeatsPerMeasure = Number(event.target.value);
@@ -956,8 +978,10 @@
         }
 
         function updateBPM(val) {
-            bpm = parseInt(val);
+            bpm = Math.max(20, Math.min(300, Math.round(Number(val))));
             document.getElementById('bpm-val').textContent = bpm;
+            document.getElementById('bpm-input').value = bpm;
+            document.getElementById('bpm-slider').value = bpm;
             if (isPlaying) {
                 stopPlayback();
                 startPlaybackLoop();

@@ -205,10 +205,18 @@
 
                 <!-- Tempo & Audio Controls -->
                 <div class="flex flex-wrap items-center justify-between gap-6 bg-stone-950 p-4 rounded-xl border border-stone-800/60">
-                    <div class="flex items-center gap-3 flex-grow max-w-xs">
+                    <div class="flex flex-wrap items-center gap-2 flex-grow max-w-2xl">
                         <i class="fa-solid fa-gauge-high text-stone-400 text-sm"></i>
-                        <span class="text-xs font-medium text-stone-300 w-16">Tempo: <b id="bpm-val" class="text-amber-400">80</b> BPM</span>
-                        <input type="range" id="bpm-slider" min="30" max="200" value="80" class="w-full accent-bamboo-500 cursor-pointer">
+                        <label for="bpm-input" class="text-xs font-medium text-stone-300">Tempo:</label>
+                        <input type="text" id="bpm-input" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="80" aria-label="Practice tempo in BPM" class="w-14 bg-stone-900 border border-stone-700 text-center text-sm text-amber-400 rounded-lg px-2 py-1 focus:outline-none focus:border-bamboo-500">
+                        <span class="text-xs font-medium text-stone-300">BPM <b id="bpm-val" class="text-amber-400">80</b></span>
+                        <div class="flex items-center gap-1">
+                            <button type="button" data-action="adjust-practice-tempo" data-delta="-5" aria-label="Decrease practice tempo by 5 BPM" class="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold transition-colors">−5</button>
+                            <button type="button" data-action="adjust-practice-tempo" data-delta="5" aria-label="Increase practice tempo by 5 BPM" class="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold transition-colors">+5</button>
+                            <button type="button" data-action="adjust-practice-tempo" data-factor="2" aria-label="Double practice tempo" class="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs font-semibold transition-colors">x2</button>
+                            <button type="button" data-action="adjust-practice-tempo" data-factor="0.5" aria-label="Halve practice tempo" class="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs font-semibold transition-colors">÷2</button>
+                        </div>
+                        <input type="range" id="bpm-slider" min="20" max="300" value="80" aria-label="Adjust practice tempo" class="w-full accent-bamboo-500 cursor-pointer">
                     </div>
 
                     <div class="flex items-center gap-3">
