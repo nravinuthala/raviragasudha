@@ -279,7 +279,7 @@
                         </h2>
                         <p class="text-sm text-stone-400">Practice Sarali, Janta, Dhatu Varisais, and custom alankars.</p>
                     </div>
-                    <button data-action="add-alankar" class="px-4 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-medium text-sm flex items-center gap-2 shadow transition-all">
+                    <button data-action="add-alankar" hidden class="px-4 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-medium text-sm flex items-center gap-2 shadow transition-all">
                         <i class="fa-solid fa-plus"></i> Add New Alankar
                     </button>
                 </div>
@@ -318,7 +318,7 @@
                         </h2>
                         <p class="text-sm text-stone-400">Explore Melakarta & Janya Raagas with Aarohana and Avarohana scales.</p>
                     </div>
-                    <button data-action="add-raaga" class="px-4 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-medium text-sm flex items-center gap-2 shadow transition-all">
+                    <button data-action="add-raaga" hidden class="px-4 py-2.5 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white font-medium text-sm flex items-center gap-2 shadow transition-all">
                         <i class="fa-solid fa-plus"></i> Add New Raaga
                     </button>
                 </div>
@@ -393,8 +393,13 @@
 
     <!-- Footer -->
     <footer class="bg-stone-900 border-t border-stone-800 py-4 mt-8">
-        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-stone-500">
-            Carnatic Flute Practice Guide &bull; Designed for 8-Hole Flutes &bull; Web Audio Synthesized Feedback
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
+            <span>Carnatic Flute Practice Guide &bull; Designed for 8-Hole Flutes &bull; Web Audio Synthesized Feedback</span>
+            <div class="flex items-center gap-3">
+                <span id="auth-status" aria-live="polite"></span>
+                <button id="admin-login-button" type="button" data-action="open-login" class="text-stone-400 hover:text-amber-400 transition-colors">Admin login</button>
+                <button id="admin-logout-button" type="button" data-action="logout" hidden class="text-stone-400 hover:text-amber-400 transition-colors">Log out</button>
+            </div>
         </div>
     </footer>
 
@@ -472,6 +477,30 @@
                 <div class="flex justify-end gap-3 pt-4">
                     <button type="button" data-action="close-raaga" class="px-4 py-2 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-stone-700">Cancel</button>
                     <button type="submit" class="px-4 py-2 rounded-xl bg-bamboo-600 text-white text-sm font-medium hover:bg-bamboo-500">Save Raaga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN LOGIN -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button type="button" data-action="close-login" aria-label="Close login" class="absolute top-4 right-4 text-stone-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
+            </button>
+            <h3 id="admin-login-title" class="text-lg font-bold text-amber-400 mb-4">Admin Login</h3>
+            <form id="admin-login-form" class="space-y-4">
+                <div>
+                    <label for="admin-email" class="block text-xs text-stone-400 font-medium mb-1">Email</label>
+                    <input id="admin-email" type="email" autocomplete="username" required class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div>
+                    <label for="admin-password" class="block text-xs text-stone-400 font-medium mb-1">Password</label>
+                    <input id="admin-password" type="password" autocomplete="current-password" required class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-bamboo-500">
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" data-action="close-login" class="px-4 py-2 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-stone-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-bamboo-600 text-white text-sm font-medium hover:bg-bamboo-500">Sign in</button>
                 </div>
             </form>
         </div>

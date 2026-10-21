@@ -428,6 +428,98 @@
             }
         }
 
+        function applyAuthSession(session) {
+            currentAuthUser = session?.user || null;
+            isAdmin = currentAuthUser?.app_metadata?.role === 'admin';
+            document.querySelectorAll('[data-action="add-alankar"], [data-action="add-raaga"]').forEach(button => {
+                button.hidden = !isAdmin;
+            });
+            document.getElementById('admin-login-button').hidden = Boolean(currentAuthUser);
+            document.getElementById('admin-logout-button').hidden = !currentAuthUser;
+            document.getElementById('auth-status').textContent = isAdmin
+                ? 'Admin'
+                : currentAuthUser
+                    ? 'Signed in (read-only)'
+                    : 'Guest';
+            renderAlankars();
+            renderRaagas();
+        }
+
+        async function initializeAuth() {
+            if (!supabaseClient) {
+                showAppMessage('Authentication is unavailable because Supabase did not initialize.');
+                console.error('Unable to initialize Supabase Auth.');
+                return;
+            }
+
+            supabaseClient.auth.onAuthStateChange((_event, session) => {
+                applyAuthSession(session);
+            });
+
+            try {
+                const { data, error } = await supabaseClient.auth.getSession();
+                if (error) throw error;
+                applyAuthSession(data.session);
+            } catch (error) {
+                console.error('Unable to restore the Supabase session.', error);
+                showAppMessage('Could not check your admin session. Refresh the page or sign in again.');
+                applyAuthSession(null);
+            }
+        }
+
+        function requireAdmin() {
+            if (isAdmin) return true;
+            showAppMessage('Admin access is required for this action. Sign in with an admin account and try again.');
+            return false;
+        }
+
+        function openAdminLogin() {
+            document.getElementById('admin-login-form').reset();
+            document.getElementById('admin-login-modal').classList.remove('hidden');
+            document.getElementById('admin-email').focus();
+        }
+
+        function closeAdminLogin() {
+            document.getElementById('admin-login-modal').classList.add('hidden');
+        }
+
+        async function handleAdminLogin(event) {
+            event.preventDefault();
+            if (!supabaseClient) {
+                showAppMessage('Authentication is unavailable. Please try again later.');
+                return;
+            }
+
+            const email = document.getElementById('admin-email').value.trim();
+            const password = document.getElementById('admin-password').value;
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                if (data.user?.app_metadata?.role !== 'admin') {
+                    await supabaseClient.auth.signOut();
+                    showAppMessage('This account is not authorized as an admin.');
+                    return;
+                }
+                applyAuthSession(data.session);
+                closeAdminLogin();
+            } catch (error) {
+                console.error('Admin sign-in failed.', error);
+                showAppMessage('Admin sign-in failed. Check your credentials and try again.');
+            }
+        }
+
+        async function handleAdminLogout() {
+            if (!supabaseClient) return;
+            try {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) throw error;
+                applyAuthSession(null);
+            } catch (error) {
+                console.error('Unable to sign out.', error);
+                showAppMessage('Could not sign out. Please try again.');
+            }
+        }
+
         function parseSwaraSequence(rawValue, input) {
             const tokens = rawValue.trim().split(/\s+/);
             const sequence = rawValue.trim() ? normalizeSwaraSequence(tokens) : null;
@@ -457,6 +549,8 @@
         let playbackTimeout = null;
         let bpm = 80;
         let basePitch = 329.63; // Standard E4 Flute
+        let currentAuthUser = null;
+        let isAdmin = false;
 
         // WEB AUDIO SYNTHESIZER
         let audioCtx = null;
@@ -734,13 +828,24 @@
                 case 'stop-playback':
                     stopPlayback();
                     break;
+                case 'open-login':
+                    openAdminLogin();
+                    break;
+                case 'close-login':
+                    closeAdminLogin();
+                    break;
+                case 'logout':
+                    handleAdminLogout();
+                    break;
                 case 'add-alankar':
+                    if (!requireAdmin()) break;
                     openAlankarModal();
                     break;
                 case 'close-alankar':
                     closeAlankarModal();
                     break;
                 case 'add-raaga':
+                    if (!requireAdmin()) break;
                     openRaagaModal();
                     break;
                 case 'close-raaga':
@@ -760,9 +865,11 @@
                     break;
                 }
                 case 'edit-alankar':
+                    if (!requireAdmin()) break;
                     openAlankarModal(id);
                     break;
                 case 'delete-alankar':
+                    if (!requireAdmin()) break;
                     deleteAlankar(id);
                     break;
                 case 'practice-raaga': {
@@ -774,9 +881,11 @@
                     break;
                 }
                 case 'edit-raaga':
+                    if (!requireAdmin()) break;
                     openRaagaModal(id);
                     break;
                 case 'delete-raaga':
+                    if (!requireAdmin()) break;
                     deleteRaaga(id);
                     break;
                 case 'sequence-note':
@@ -788,6 +897,7 @@
         function handleFormSubmit(event) {
             if (event.target.id === 'alankar-form') saveAlankar(event);
             if (event.target.id === 'raaga-form') saveRaaga(event);
+            if (event.target.id === 'admin-login-form') handleAdminLogin(event);
         }
 
         function initializeApp() {
@@ -843,6 +953,7 @@
             renderMetronomeBeatIndicators();
             loadSequence(DEFAULT_ALANKARS[0].name, 'Default Practice', DEFAULT_ALANKARS[0].sequence);
             updateFluteDisplay('S');
+            initializeAuth();
             fetchDataFromSupabase();
         }
 
@@ -1200,25 +1311,25 @@
                 const actions = makeElement('div', 'flex items-center gap-2 self-end md:self-center');
                 const practiceButton = makeActionButton('practice-alankar', '', 'px-3 py-2 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow', { id: item.id });
                 practiceButton.append(makeElement('i', 'fa-solid fa-play'), document.createTextNode(' Practice'));
-                const editButton = makeActionButton('edit-alankar', '', 'p-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 text-xs', { id: item.id });
-                editButton.title = `Edit ${item.name}`;
-                editButton.setAttribute('aria-label', `Edit ${item.name}`);
-                editButton.appendChild(makeElement('i', 'fa-solid fa-pen'));
-                const deleteButton = makeActionButton('delete-alankar', '', 'p-2 rounded-xl bg-stone-900 hover:bg-red-950 text-stone-400 hover:text-red-400 text-xs', { id: item.id });
-                deleteButton.title = `Delete ${item.name}`;
-                deleteButton.setAttribute('aria-label', `Delete ${item.name}`);
-                deleteButton.appendChild(makeElement('i', 'fa-solid fa-trash'));
-                actions.append(
-                    practiceButton,
-                    editButton,
-                    deleteButton
-                );
+                actions.appendChild(practiceButton);
+                if (isAdmin && item.databaseId !== undefined) {
+                    const editButton = makeActionButton('edit-alankar', '', 'p-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 text-xs', { id: item.id });
+                    editButton.title = `Edit ${item.name}`;
+                    editButton.setAttribute('aria-label', `Edit ${item.name}`);
+                    editButton.appendChild(makeElement('i', 'fa-solid fa-pen'));
+                    const deleteButton = makeActionButton('delete-alankar', '', 'p-2 rounded-xl bg-stone-900 hover:bg-red-950 text-stone-400 hover:text-red-400 text-xs', { id: item.id });
+                    deleteButton.title = `Delete ${item.name}`;
+                    deleteButton.setAttribute('aria-label', `Delete ${item.name}`);
+                    deleteButton.appendChild(makeElement('i', 'fa-solid fa-trash'));
+                    actions.append(editButton, deleteButton);
+                }
                 card.append(details, actions);
                 list.appendChild(card);
             });
         }
 
         function openAlankarModal(id = null) {
+            if (!requireAdmin()) return;
             document.getElementById('alankar-modal').classList.remove('hidden');
             if (id) {
                 const item = alankars.find(a => a.id === id);
@@ -1246,6 +1357,7 @@
 
         async function saveAlankar(e) {
             e.preventDefault();
+            if (!requireAdmin()) return;
             const id = document.getElementById('alankar-id').value;
             const name = document.getElementById('alankar-name').value.trim();
             const type = document.getElementById('alankar-type').value;
@@ -1307,6 +1419,7 @@
         }
 
         async function deleteAlankar(id) {
+            if (!requireAdmin()) return;
             if (confirm("Are you sure you want to delete this exercise?")) {
                 const item = alankars.find(alankar => alankar.id === id);
                 if (!item) return;
@@ -1379,15 +1492,17 @@
                 const practiceButton = makeActionButton('practice-raaga', '', 'px-4 py-2 rounded-xl bg-bamboo-600 hover:bg-bamboo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow', { id: r.id });
                 practiceButton.append(makeElement('i', 'fa-solid fa-play'), document.createTextNode(' Play Full Raaga Scale'));
                 const actions = makeElement('div', 'flex items-center gap-1');
-                const editButton = makeActionButton('edit-raaga', '', 'p-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 text-xs', { id: r.id });
-                editButton.title = `Edit ${r.name}`;
-                editButton.setAttribute('aria-label', `Edit ${r.name}`);
-                editButton.appendChild(makeElement('i', 'fa-solid fa-pen'));
-                const deleteButton = makeActionButton('delete-raaga', '', 'p-2 rounded-xl bg-stone-900 hover:bg-red-950 text-stone-400 hover:text-red-400 text-xs', { id: r.id });
-                deleteButton.title = `Delete ${r.name}`;
-                deleteButton.setAttribute('aria-label', `Delete ${r.name}`);
-                deleteButton.appendChild(makeElement('i', 'fa-solid fa-trash'));
-                actions.append(editButton, deleteButton);
+                if (isAdmin && r.databaseId !== undefined) {
+                    const editButton = makeActionButton('edit-raaga', '', 'p-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 text-xs', { id: r.id });
+                    editButton.title = `Edit ${r.name}`;
+                    editButton.setAttribute('aria-label', `Edit ${r.name}`);
+                    editButton.appendChild(makeElement('i', 'fa-solid fa-pen'));
+                    const deleteButton = makeActionButton('delete-raaga', '', 'p-2 rounded-xl bg-stone-900 hover:bg-red-950 text-stone-400 hover:text-red-400 text-xs', { id: r.id });
+                    deleteButton.title = `Delete ${r.name}`;
+                    deleteButton.setAttribute('aria-label', `Delete ${r.name}`);
+                    deleteButton.appendChild(makeElement('i', 'fa-solid fa-trash'));
+                    actions.append(editButton, deleteButton);
+                }
                 footer.append(practiceButton, actions);
                 card.append(details, footer);
                 grid.appendChild(card);
@@ -1395,6 +1510,7 @@
         }
 
         function openRaagaModal(id = null) {
+            if (!requireAdmin()) return;
             document.getElementById('raaga-modal').classList.remove('hidden');
             if (id) {
                 const item = raagas.find(r => r.id === id);
@@ -1423,6 +1539,7 @@
 
         async function saveRaaga(e) {
             e.preventDefault();
+            if (!requireAdmin()) return;
             const id = document.getElementById('raaga-id').value;
             const name = document.getElementById('raaga-name').value.trim();
             const info = document.getElementById('raaga-info').value.trim();
@@ -1486,6 +1603,7 @@
         }
 
         async function deleteRaaga(id) {
+            if (!requireAdmin()) return;
             if (confirm("Are you sure you want to delete this raaga?")) {
                 const item = raagas.find(raaga => raaga.id === id);
                 if (!item) return;
